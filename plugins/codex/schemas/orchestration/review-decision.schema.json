@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ReviewDecision",
+  "description": "Manager output contract deciding the fate of a submitted task attempt.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "taskId",
+    "decision",
+    "feedback",
+    "nextAttempt",
+    "maxAttempts"
+  ],
+  "properties": {
+    "taskId": {
+      "type": "string"
+    },
+    "decision": {
+      "type": "string",
+      "enum": [
+        "approve",
+        "rework",
+        "split",
+        "reassign",
+        "escalate"
+      ]
+    },
+    "feedback": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "code",
+          "description"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "nextAttempt": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "maxAttempts": {
+      "type": "integer",
+      "minimum": 1
+    }
+  }
+}

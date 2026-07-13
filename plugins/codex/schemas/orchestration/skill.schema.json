@@ -1,0 +1,155 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Skill",
+  "description": "A reusable, versioned procedure that an agent can be granted.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "version",
+    "status",
+    "purpose",
+    "useWhen",
+    "dontUseWhen",
+    "requiredInputs",
+    "procedure",
+    "verificationSteps",
+    "doneWhen",
+    "escalateWhen",
+    "outputContract",
+    "sources",
+    "owner"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^(core|technical|project|domain)/[a-z0-9-]+$"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "evaluating",
+        "approved",
+        "active",
+        "deprecated"
+      ]
+    },
+    "purpose": {
+      "type": "string"
+    },
+    "useWhen": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "dontUseWhen": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "requiredInputs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "procedure": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    },
+    "verificationSteps": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "doneWhen": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "escalateWhen": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "outputContract": {
+      "type": "string"
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "owner": {
+      "type": "string"
+    },
+    "requires": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "approvedBy": {
+      "type": "string"
+    },
+    "evaluations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "taskId",
+          "outcome",
+          "at"
+        ],
+        "properties": {
+          "taskId": {
+            "type": "string"
+          },
+          "outcome": {
+            "type": "string"
+          },
+          "at": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "permissionsNeeded": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "read",
+        "write"
+      ],
+      "properties": {
+        "read": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "write": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

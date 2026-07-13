@@ -1,0 +1,138 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Campaign",
+  "description": "A top-level unit of work spanning many tasks, with budget and usage tracking.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "campaignId",
+    "brief",
+    "acceptanceCriteria",
+    "status",
+    "budget",
+    "usage",
+    "startedAt"
+  ],
+  "properties": {
+    "campaignId": {
+      "type": "string"
+    },
+    "brief": {
+      "type": "string"
+    },
+    "acceptanceCriteria": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "awaiting_approval",
+        "running",
+        "paused",
+        "completed",
+        "failed",
+        "cancelled"
+      ]
+    },
+    "budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "maxExecutiveCalls",
+        "maxManagerCalls",
+        "maxWorkerCalls",
+        "maxAttemptsPerTask",
+        "maxCampaignDurationMinutes"
+      ],
+      "properties": {
+        "maxExecutiveCalls": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "maxManagerCalls": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "maxWorkerCalls": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "maxAttemptsPerTask": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "maxCampaignDurationMinutes": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "usage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "executiveCalls",
+        "managerCalls",
+        "workerCalls",
+        "reworks",
+        "estimatedCostByProvider"
+      ],
+      "properties": {
+        "executiveCalls": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "managerCalls": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "workerCalls": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "reworks": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "estimatedCostByProvider": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    },
+    "startedAt": {
+      "type": "string"
+    },
+    "approvals": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "role",
+          "decision",
+          "at"
+        ],
+        "properties": {
+          "role": {
+            "type": "string"
+          },
+          "decision": {
+            "type": "string"
+          },
+          "at": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "endedAt": {
+      "type": "string"
+    }
+  }
+}

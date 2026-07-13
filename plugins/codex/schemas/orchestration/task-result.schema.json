@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TaskResult",
+  "description": "Worker output contract reporting the outcome of a task attempt.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "taskId",
+    "agentId",
+    "summary",
+    "status",
+    "changedFiles",
+    "commandsExecuted",
+    "verification",
+    "risks",
+    "memoryProposals",
+    "skillProposals"
+  ],
+  "properties": {
+    "taskId": {
+      "type": "string"
+    },
+    "agentId": {
+      "type": "string"
+    },
+    "summary": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "completed",
+        "needs_review",
+        "failed",
+        "escalate"
+      ]
+    },
+    "changedFiles": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "commandsExecuted": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "passed",
+        "details"
+      ],
+      "properties": {
+        "passed": {
+          "type": "boolean"
+        },
+        "details": {
+          "type": "string"
+        }
+      }
+    },
+    "risks": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "memoryProposals": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "skillProposals": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    }
+  }
+}

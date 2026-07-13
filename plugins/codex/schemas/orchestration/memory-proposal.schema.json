@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "MemoryProposal",
+  "description": "A candidate durable memory entry proposed by an agent, pending governance decision.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "proposalId",
+    "agentId",
+    "scope",
+    "content",
+    "type",
+    "evidence",
+    "confidence",
+    "status"
+  ],
+  "properties": {
+    "proposalId": {
+      "type": "string"
+    },
+    "agentId": {
+      "type": "string"
+    },
+    "scope": {
+      "type": "string"
+    },
+    "content": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "failure-pattern",
+        "convention",
+        "fact",
+        "architecture"
+      ]
+    },
+    "evidence": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "approved",
+        "edited",
+        "rejected",
+        "escalated"
+      ]
+    },
+    "decidedBy": {
+      "type": "string"
+    },
+    "decidedAt": {
+      "type": "string"
+    },
+    "finalContent": {
+      "type": "string"
+    }
+  }
+}
