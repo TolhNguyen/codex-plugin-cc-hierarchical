@@ -158,6 +158,29 @@
           "minimum": 1
         }
       }
+    },
+    "approvals": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "role",
+          "decision",
+          "at"
+        ],
+        "properties": {
+          "role": {
+            "type": "string"
+          },
+          "decision": {
+            "type": "string"
+          },
+          "at": {
+            "type": "string"
+          }
+        }
+      }
     }
   }
 }
