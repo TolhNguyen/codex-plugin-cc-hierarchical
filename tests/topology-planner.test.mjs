@@ -13,6 +13,7 @@ import { analyzeRepository } from "../plugins/codex/scripts/orchestration/reposi
 import { loadOrchestrationSchema } from "../plugins/codex/scripts/lib/schema-validator.mjs";
 import { loadAgent } from "../plugins/codex/scripts/agents/agent-registry.mjs";
 import { loadSkill } from "../plugins/codex/scripts/skills/skill-registry.mjs";
+import { resolveProvider } from "../plugins/codex/scripts/runtimes/provider-presets.mjs";
 import { makeTempDir, run } from "./helpers.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -192,7 +193,17 @@ test("writeTopologyProposal + approveTopology: registers agents active and skill
     ]);
     assert.deepEqual(persistentAgent.skills, ["project/repo-doc-conventions@0.1.0"]);
     assert.deepEqual(persistentAgent.memory, { namespaces: ["agent/test-worker-01", "project/shared"] });
-    assert.deepEqual(persistentAgent.runtime, { provider: "openai-compatible", model: "deepseek-chat" });
+    assert.deepEqual(persistentAgent.runtime, { provider: "deepseek", model: "deepseek-chat" });
+
+    // Verify the runtime pairing is coherent: resolveProvider should work without throwing
+    // and should yield a non-null baseUrl when DEEPSEEK_API_KEY is set.
+    const resolved = resolveProvider(persistentAgent.runtime.provider, {
+      env: { DEEPSEEK_API_KEY: "test-key" }
+    });
+    assert.equal(resolved.id, "deepseek");
+    assert.notEqual(resolved.baseUrl, null);
+    assert.equal(resolved.model, "deepseek-chat");
+
     assert.deepEqual(persistentAgent.limits, {
       maxAttemptsPerTask: 3,
       maxExecutionMinutes: 20,

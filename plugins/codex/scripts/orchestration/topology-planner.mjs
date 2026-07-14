@@ -19,6 +19,7 @@ import { saveSkill } from "../skills/skill-registry.mjs";
 
 const PLUGIN_ROOT_DIR = path.resolve(fileURLToPath(new URL("../..", import.meta.url)));
 const DEFAULT_SKILL_VERSION = "0.1.0";
+const DEFAULT_AGENT_RUNTIME = { provider: "deepseek", model: "deepseek-chat" };
 
 function buildPrompt(profile) {
   const template = loadPromptTemplate(PLUGIN_ROOT_DIR, "orchestration/topology-proposal");
@@ -147,7 +148,7 @@ function buildAgentDocument(proposedAgent, draftIds) {
     skills: proposedAgent.skills.map((ref) => resolveAgentSkillRef(ref, draftIds)),
     memory: { namespaces: [`agent/${proposedAgent.id}`, "project/shared"] },
     permissions: proposedAgent.permissions,
-    runtime: { provider: "openai-compatible", model: "deepseek-chat" },
+    runtime: DEFAULT_AGENT_RUNTIME,
     limits: { maxAttemptsPerTask: 3, maxExecutionMinutes: 20, maxToolCalls: 40 }
   };
 }
