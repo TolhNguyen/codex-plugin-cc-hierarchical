@@ -18,6 +18,7 @@ import { createRuntimeResult } from "../plugins/codex/scripts/runtimes/runtime-b
 import { saveAgent } from "../plugins/codex/scripts/agents/agent-registry.mjs";
 import { saveSkill } from "../plugins/codex/scripts/skills/skill-registry.mjs";
 import { appendMemoryEntry } from "../plugins/codex/scripts/memory/memory-store.mjs";
+import { recordProposals } from "../plugins/codex/scripts/memory/proposal-store.mjs";
 import { makeTempDir, run } from "./helpers.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -293,6 +294,71 @@ test("buildWorkerContext: includes only granted ACTIVE skills, memory from grant
   });
 });
 
+test("buildWorkerContext: contextFiles that escape rootDir or fall outside the agent's granted read permissions are denied via the permission guard (no content or path leak) — Critical 1", () => {
+  withTempDir((rootDir) => {
+    saveSkill(rootDir, makeSkillDoc());
+
+    const outsideDir = makeTempDir("campaign-orchestrator-outside-");
+    try {
+      fs.writeFileSync(path.join(outsideDir, "secret.txt"), "SECRET_OUTSIDE_ROOTDIR_CONTENT", "utf8");
+      const outsideRelPath = path.relative(rootDir, path.join(outsideDir, "secret.txt"));
+
+      fs.mkdirSync(path.join(rootDir, ".ai-company", "agents"), { recursive: true });
+      fs.writeFileSync(
+        path.join(rootDir, ".ai-company", "agents", "worker-a.json"),
+        JSON.stringify({ secret: "SECRET_AI_COMPANY_CONTENT" }),
+        "utf8"
+      );
+
+      fs.mkdirSync(path.join(rootDir, "docs"), { recursive: true });
+      fs.writeFileSync(path.join(rootDir, "docs", "context.md"), "Some context content", "utf8");
+
+      // Scoped read permission (realistic worker grant): does NOT include
+      // .ai-company or anything outside rootDir.
+      const agent = makeAgentDoc({ permissions: { read: ["docs/**"], write: ["src/alpha/**"] } });
+      const task = makeTaskDoc({
+        contextFiles: [outsideRelPath, ".ai-company/agents/worker-a.json", "docs/context.md"]
+      });
+
+      const context = buildWorkerContext(rootDir, task, agent, []);
+
+      assert.doesNotMatch(context.systemPrompt, /SECRET_OUTSIDE_ROOTDIR_CONTENT/);
+      assert.doesNotMatch(context.userPrompt, /SECRET_OUTSIDE_ROOTDIR_CONTENT/);
+      assert.doesNotMatch(context.systemPrompt, /SECRET_AI_COMPANY_CONTENT/);
+      assert.doesNotMatch(context.userPrompt, /SECRET_AI_COMPANY_CONTENT/);
+
+      const outsideDirPattern = new RegExp(outsideDir.replace(/[\\/]/g, "[\\\\/]"));
+      assert.doesNotMatch(context.userPrompt, outsideDirPattern);
+      assert.doesNotMatch(context.systemPrompt, outsideDirPattern);
+
+      const accessDeniedCount = (context.userPrompt.match(/\(access denied\)/g) ?? []).length;
+      assert.equal(accessDeniedCount, 2);
+      assert.match(context.userPrompt, /Some context content/);
+    } finally {
+      fs.rmSync(outsideDir, { recursive: true, force: true });
+    }
+  });
+});
+
+test("buildWorkerContext: a contextFiles entry larger than the 32KB render cap is skipped with a (too large) note, never read into the prompt — Minor 7", () => {
+  withTempDir((rootDir) => {
+    saveSkill(rootDir, makeSkillDoc());
+
+    fs.mkdirSync(path.join(rootDir, "docs"), { recursive: true });
+    const bigContent = `START_MARKER${"x".repeat(64 * 1024)}END_MARKER`;
+    fs.writeFileSync(path.join(rootDir, "docs", "big.md"), bigContent, "utf8");
+
+    const agent = makeAgentDoc({ permissions: { read: ["docs/**"], write: ["src/alpha/**"] } });
+    const task = makeTaskDoc({ contextFiles: ["docs/big.md"] });
+
+    const context = buildWorkerContext(rootDir, task, agent, []);
+
+    assert.doesNotMatch(context.userPrompt, /START_MARKER/);
+    assert.doesNotMatch(context.userPrompt, /END_MARKER/);
+    assert.match(context.userPrompt, /docs\/big\.md\n\(too large\)/);
+  });
+});
+
 test("buildWorkerContext: throws when a required skill is not active (assertSkillsActive enforced)", () => {
   withTempDir((rootDir) => {
     saveSkill(rootDir, makeSkillDoc({ status: "draft" }));
@@ -524,6 +590,267 @@ test("runCampaignTask: a worker transport failure then a successful retry increm
   });
 });
 
+test("runCampaignTask: rejects when campaign.status is 'draft' and never invokes the worker or manager runtime — Critical 2", async () => {
+  await withTempDirAsync(async (rootDir) => {
+    saveSkill(rootDir, makeSkillDoc());
+    saveAgent(rootDir, makeAgentDoc());
+
+    const campaign = createCampaign(rootDir, { brief: "b", acceptanceCriteria: ["x"] });
+    const task = makeTaskDoc({ campaignId: campaign.campaignId });
+
+    let workerCalled = false;
+    let managerCalled = false;
+    const workerRuntimeFactory = () => ({
+      execute: async () => {
+        workerCalled = true;
+        throw new Error("worker must never be called before approval");
+      }
+    });
+    const managerRuntimeFactory = () => ({
+      execute: async () => {
+        managerCalled = true;
+        throw new Error("manager must never be called before approval");
+      }
+    });
+    const managerAgent = { id: "manager-codex", name: "Manager", runtime: { provider: "codex", model: null } };
+
+    await assert.rejects(
+      () => runCampaignTask(rootDir, { campaign, task, managerAgent, workerRuntimeFactory, managerRuntimeFactory }),
+      /draft/
+    );
+    assert.equal(workerCalled, false);
+    assert.equal(managerCalled, false);
+  });
+});
+
+test("runCampaignTask: rejects when campaign.status is 'awaiting_approval' and never invokes any runtime — Critical 2", async () => {
+  await withTempDirAsync(async (rootDir) => {
+    saveSkill(rootDir, makeSkillDoc());
+    saveAgent(rootDir, makeAgentDoc());
+
+    const campaign = createCampaign(rootDir, { brief: "b", acceptanceCriteria: ["x"] });
+    setCampaignStatus(rootDir, campaign.campaignId, "awaiting_approval");
+    const pendingCampaign = loadCampaign(rootDir, campaign.campaignId);
+    const task = makeTaskDoc({ campaignId: campaign.campaignId });
+
+    let workerCalled = false;
+    let managerCalled = false;
+    const workerRuntimeFactory = () => ({ execute: async () => { workerCalled = true; throw new Error("must not be called"); } });
+    const managerRuntimeFactory = () => ({ execute: async () => { managerCalled = true; throw new Error("must not be called"); } });
+    const managerAgent = { id: "manager-codex", name: "Manager", runtime: { provider: "codex", model: null } };
+
+    await assert.rejects(
+      () =>
+        runCampaignTask(rootDir, {
+          campaign: pendingCampaign,
+          task,
+          managerAgent,
+          workerRuntimeFactory,
+          managerRuntimeFactory
+        }),
+      /awaiting_approval/
+    );
+    assert.equal(workerCalled, false);
+    assert.equal(managerCalled, false);
+  });
+});
+
+test("runCampaignTask: rejects when campaign.status is 'paused' and never invokes any runtime — Critical 2", async () => {
+  await withTempDirAsync(async (rootDir) => {
+    saveSkill(rootDir, makeSkillDoc());
+    saveAgent(rootDir, makeAgentDoc());
+
+    const campaign = createCampaign(rootDir, { brief: "b", acceptanceCriteria: ["x"] });
+    setCampaignStatus(rootDir, campaign.campaignId, "awaiting_approval");
+    setCampaignStatus(rootDir, campaign.campaignId, "running", {
+      role: "exec-tin",
+      decision: "approve",
+      at: new Date().toISOString()
+    });
+    const pausedCampaign = setCampaignStatus(rootDir, campaign.campaignId, "paused");
+    const task = makeTaskDoc({ campaignId: campaign.campaignId });
+
+    let workerCalled = false;
+    let managerCalled = false;
+    const workerRuntimeFactory = () => ({ execute: async () => { workerCalled = true; throw new Error("must not be called"); } });
+    const managerRuntimeFactory = () => ({ execute: async () => { managerCalled = true; throw new Error("must not be called"); } });
+    const managerAgent = { id: "manager-codex", name: "Manager", runtime: { provider: "codex", model: null } };
+
+    await assert.rejects(
+      () =>
+        runCampaignTask(rootDir, {
+          campaign: pausedCampaign,
+          task,
+          managerAgent,
+          workerRuntimeFactory,
+          managerRuntimeFactory
+        }),
+      /paused/
+    );
+    assert.equal(workerCalled, false);
+    assert.equal(managerCalled, false);
+  });
+});
+
+test("runCampaignTask: estimates manager (codex) cost too, and accumulates worker cost across every attempt, not just the last — Important 3", async () => {
+  await withTempDirAsync(async (rootDir) => {
+    saveSkill(rootDir, makeSkillDoc());
+    saveAgent(rootDir, makeAgentDoc({ runtime: { provider: "deepseek", model: "deepseek-chat" } }));
+
+    const campaign = createCampaign(rootDir, {
+      brief: "b",
+      acceptanceCriteria: ["x"],
+      budget: { maxWorkerCalls: 5, maxManagerCalls: 5 }
+    });
+    campaign.status = "running";
+    saveCampaign(rootDir, campaign);
+
+    const task = makeTaskDoc({ campaignId: campaign.campaignId, maxAttempts: 3 });
+
+    const workerUsage = { inputTokens: 1000, outputTokens: 1000, calls: 1 };
+    const workerResult1 = createRuntimeResult({
+      executionId: "exec-w1",
+      agentId: "worker-a",
+      role: "worker",
+      status: "completed",
+      output: JSON.stringify(makeTaskResultDoc()),
+      usage: workerUsage,
+      startedAt: "2026-07-14T00:00:00.000Z",
+      endedAt: "2026-07-14T00:00:01.000Z"
+    });
+    const workerResult2 = createRuntimeResult({
+      executionId: "exec-w2",
+      agentId: "worker-a",
+      role: "worker",
+      status: "completed",
+      output: JSON.stringify(makeTaskResultDoc()),
+      usage: workerUsage,
+      startedAt: "2026-07-14T00:00:02.000Z",
+      endedAt: "2026-07-14T00:00:03.000Z"
+    });
+
+    let workerCall = 0;
+    const workerRuntimeFactory = () => ({
+      execute: async () => {
+        workerCall += 1;
+        return workerCall === 1 ? workerResult1 : workerResult2;
+      }
+    });
+
+    const reworkDecision = { taskId: task.taskId, decision: "rework", feedback: [{ code: "X", description: "more" }], nextAttempt: 2, maxAttempts: 3 };
+    const approveDecision = { taskId: task.taskId, decision: "approve", feedback: [], nextAttempt: 3, maxAttempts: 3 };
+
+    let managerCall = 0;
+    const managerRuntimeFactory = () => ({
+      execute: async () => {
+        managerCall += 1;
+        const decision = managerCall === 1 ? reworkDecision : approveDecision;
+        return createRuntimeResult({
+          executionId: `exec-m${managerCall}`,
+          agentId: "manager-codex",
+          role: "manager",
+          status: "completed",
+          output: JSON.stringify(decision),
+          usage: { inputTokens: 500, outputTokens: 500, calls: 1 },
+          startedAt: "2026-07-14T00:00:01.500Z",
+          endedAt: "2026-07-14T00:00:01.900Z"
+        });
+      }
+    });
+    const managerAgent = { id: "manager-codex", name: "Manager", runtime: { provider: "codex", model: null } };
+
+    const result = await runCampaignTask(rootDir, {
+      campaign,
+      task,
+      managerAgent,
+      workerRuntimeFactory,
+      managerRuntimeFactory
+    });
+
+    assert.equal(result.loop.outcome, "approved");
+    assert.equal(result.loop.attempts, 2);
+
+    const persistedCampaign = loadCampaign(rootDir, campaign.campaignId);
+    const costs = persistedCampaign.usage.estimatedCostByProvider;
+    // Codex pricing is intentionally free (see budget.mjs PROVIDER_PRICING),
+    // so the estimated codex cost is 0 — the bug this guards against is that
+    // manager usage was never fed into estimateCost at all, so the "codex"
+    // key never appeared in estimatedCostByProvider.
+    assert.ok("codex" in costs, "manager (codex) cost must be estimated");
+
+    // Both worker attempts' usage must be counted, not just the final one.
+    const perAttemptCost = (1000 / 1000) * 0.00027 + (1000 / 1000) * 0.0011;
+    assert.ok(
+      Math.abs(costs.deepseek - perAttemptCost * 2) < 1e-9,
+      `expected accumulated cost ~${perAttemptCost * 2}, got ${costs.deepseek}`
+    );
+  });
+});
+
+test("runCampaignTask: campaign.budget.maxAttemptsPerTask clamps task.maxAttempts even when the task/agent allow more — Important 4", async () => {
+  await withTempDirAsync(async (rootDir) => {
+    saveSkill(rootDir, makeSkillDoc());
+    saveAgent(rootDir, makeAgentDoc({ limits: { maxAttemptsPerTask: 5, maxExecutionMinutes: 20, maxToolCalls: 40 } }));
+
+    const campaign = createCampaign(rootDir, {
+      brief: "b",
+      acceptanceCriteria: ["x"],
+      budget: { maxWorkerCalls: 10, maxManagerCalls: 10, maxAttemptsPerTask: 1 }
+    });
+    campaign.status = "running";
+    saveCampaign(rootDir, campaign);
+
+    const task = makeTaskDoc({ campaignId: campaign.campaignId, maxAttempts: 3 });
+
+    const workerResult = createRuntimeResult({
+      executionId: "exec-w1",
+      agentId: "worker-a",
+      role: "worker",
+      status: "completed",
+      output: JSON.stringify(makeTaskResultDoc()),
+      startedAt: "2026-07-14T00:00:00.000Z",
+      endedAt: "2026-07-14T00:00:01.000Z"
+    });
+
+    let workerCalls = 0;
+    const workerRuntimeFactory = () => ({
+      execute: async () => {
+        workerCalls += 1;
+        return workerResult;
+      }
+    });
+
+    // The manager always says "rework" — if the cap didn't apply, the loop
+    // would keep going up to task.maxAttempts (3).
+    const reworkDecision = { taskId: task.taskId, decision: "rework", feedback: [{ code: "X", description: "again" }], nextAttempt: 2, maxAttempts: 3 };
+    const managerRuntimeFactory = () => ({
+      execute: async () =>
+        createRuntimeResult({
+          executionId: "exec-m1",
+          agentId: "manager-codex",
+          role: "manager",
+          status: "completed",
+          output: JSON.stringify(reworkDecision),
+          startedAt: "2026-07-14T00:00:01.000Z",
+          endedAt: "2026-07-14T00:00:01.500Z"
+        })
+    });
+    const managerAgent = { id: "manager-codex", name: "Manager", runtime: { provider: "codex", model: null } };
+
+    const result = await runCampaignTask(rootDir, {
+      campaign,
+      task,
+      managerAgent,
+      workerRuntimeFactory,
+      managerRuntimeFactory
+    });
+
+    assert.equal(workerCalls, 1);
+    assert.equal(result.loop.attempts, 1);
+    assert.equal(result.loop.outcome, "escalated");
+  });
+});
+
 // --- CLI smoke tests --------------------------------------------------------
 
 test("orchestration-cli campaign create --json then campaign show --json: exit 0, ids match", () => {
@@ -544,6 +871,72 @@ test("orchestration-cli campaign create --json then campaign show --json: exit 0
     assert.equal(showResult.status, 0, showResult.stderr);
     const shown = JSON.parse(showResult.stdout);
     assert.equal(shown.campaign.campaignId, created.campaignId);
+  } finally {
+    fs.rmSync(rootDir, { recursive: true, force: true });
+  }
+});
+
+test("orchestration-cli campaign review-proposals: budget exhaustion pauses the campaign and is reported — Important 5", () => {
+  const rootDir = makeTempDir("campaign-cli-test-");
+  try {
+    const createResult = run(
+      "node",
+      [
+        CLI,
+        "campaign",
+        "create",
+        "--brief",
+        "Improve coverage",
+        "--criteria",
+        "tests pass",
+        "--max-manager-calls",
+        "0",
+        "--cwd",
+        rootDir,
+        "--json"
+      ],
+      { cwd: ROOT }
+    );
+    assert.equal(createResult.status, 0, createResult.stderr);
+    const created = JSON.parse(createResult.stdout);
+
+    const approveResult = run(
+      "node",
+      [CLI, "campaign", "approve", created.campaignId, "--approved-by", "exec-tin", "--cwd", rootDir, "--json"],
+      { cwd: ROOT }
+    );
+    assert.equal(approveResult.status, 0, approveResult.stderr);
+
+    recordProposals(rootDir, {
+      campaignId: created.campaignId,
+      taskId: "task-1",
+      agentId: "worker-a",
+      proposals: [
+        {
+          scope: "project/shared",
+          type: "convention",
+          content: "Always assert exit codes.",
+          evidence: ["evidence"],
+          confidence: 0.9
+        }
+      ]
+    });
+
+    const reviewResult = run(
+      "node",
+      [CLI, "campaign", "review-proposals", created.campaignId, "--decided-by", "exec-tin", "--cwd", rootDir, "--json"],
+      { cwd: ROOT }
+    );
+    assert.equal(reviewResult.status, 0, reviewResult.stderr);
+    const reviewed = JSON.parse(reviewResult.stdout);
+    assert.equal(reviewed.halted, true);
+    assert.equal(reviewed.processed.length, 0);
+
+    const showResult = run("node", [CLI, "campaign", "show", created.campaignId, "--cwd", rootDir, "--json"], {
+      cwd: ROOT
+    });
+    const shown = JSON.parse(showResult.stdout);
+    assert.equal(shown.campaign.status, "paused");
   } finally {
     fs.rmSync(rootDir, { recursive: true, force: true });
   }

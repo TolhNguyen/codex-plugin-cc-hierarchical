@@ -13,6 +13,7 @@ import { listMemoryEntries, renderMemoryForPrompt } from "../memory/memory-store
 import { assertSkillsActive } from "../skills/skill-registry.mjs";
 import { createCodexRuntime } from "../runtimes/codex-runtime.mjs";
 import { createOpenAICompatibleRuntime } from "../runtimes/openai-compatible-runtime.mjs";
+import { createPermissionGuard } from "../agents/permission-guard.mjs";
 
 /**
  * The campaign orchestrator: the top-level unit that wires task routing,
@@ -209,15 +210,37 @@ function renderSkillBlock(skill) {
   return lines.join("\n");
 }
 
-function readContextFileBlock(rootDir, relPath) {
-  const absPath = path.resolve(rootDir, relPath);
-  if (!fs.existsSync(absPath) || !fs.statSync(absPath).isFile()) {
+// Every contextFiles read is routed through the agent's own permission guard
+// (the same guard a worker's tool calls would be bound by) so a task naming
+// a path outside rootDir or outside the agent's granted read globs (e.g.
+// "../../.ssh/id_rsa" or ".ai-company/agents/x.json") can never leak file
+// content — or even its resolved OS path — into the assembled prompt. A
+// denied/escaping entry renders a neutral "(access denied)" note (same shape
+// as the existing "(missing)" note) and does not abort the rest of context
+// assembly.
+function readContextFileBlock(guard, relPath) {
+  let absPath;
+  try {
+    absPath = guard.assertRead(relPath);
+  } catch {
+    return `### ${relPath}\n(access denied)`;
+  }
+
+  let stats;
+  try {
+    stats = fs.statSync(absPath);
+  } catch {
     return `### ${relPath}\n(missing)`;
+  }
+  if (!stats.isFile()) {
+    return `### ${relPath}\n(missing)`;
+  }
+  if (stats.size > MAX_CONTEXT_FILE_BYTES) {
+    return `### ${relPath}\n(too large)`;
   }
 
   const buffer = fs.readFileSync(absPath);
-  const truncated = buffer.length > MAX_CONTEXT_FILE_BYTES ? buffer.subarray(0, MAX_CONTEXT_FILE_BYTES) : buffer;
-  return `### ${relPath}\n${truncated.toString("utf8")}`;
+  return `### ${relPath}\n${buffer.toString("utf8")}`;
 }
 
 function buildIdentityBlock(agent) {
@@ -279,7 +302,8 @@ export function buildWorkerContext(rootDir, task, agent, feedback = []) {
   const memoryEntries = listMemoryEntries(rootDir, agent?.memory?.namespaces ?? []);
   const memoryBlock = renderMemoryForPrompt(memoryEntries);
 
-  const contextBlocks = (task.contextFiles ?? []).map((relPath) => readContextFileBlock(rootDir, relPath));
+  const guard = createPermissionGuard(rootDir, agent?.permissions ?? {});
+  const contextBlocks = (task.contextFiles ?? []).map((relPath) => readContextFileBlock(guard, relPath));
 
   const systemPrompt = [
     buildIdentityBlock(agent),
@@ -340,6 +364,17 @@ export async function runCampaignTask(
     env = process.env
   }
 ) {
+  // Code-level approval gate: a campaign that was never approved (or was
+  // paused, or already finished) must never spend real budget on a task run
+  // — the "draft -> awaiting_approval -> running" state machine is otherwise
+  // only prose. This check must run before routing/budget/any runtime call.
+  if (campaign.status !== "running") {
+    throw new Error(
+      `Campaign ${campaign.campaignId} is not running (status: ${campaign.status}). ` +
+        "Run `campaign approve --approved-by <role>` to approve it before running tasks."
+    );
+  }
+
   const routing = routeTask(rootDir, task, {});
 
   if (routing.writeGaps.length > 0) {
@@ -352,8 +387,30 @@ export async function runCampaignTask(
   }
 
   const budget = createBudget(campaign);
-  const workerRuntime = workerRuntimeFactory({ rootDir, env });
-  const managerRuntime = managerRuntimeFactory({ rootDir });
+
+  // Wrap both runtimes so EVERY runtime result they ever produce (every
+  // worker attempt, every manager review call including the schema-repair
+  // retry inside createCodexReviewer) contributes to estimated cost — not
+  // just the final worker attempt. `budget` stays pure/IO-free; only usage
+  // bookkeeping happens here.
+  function wrapRuntimeForCost(runtime, providerId) {
+    return {
+      ...runtime,
+      execute: async (...args) => {
+        const result = await runtime.execute(...args);
+        if (result?.usage) {
+          budget.estimateCost(providerId, result.usage);
+        }
+        return result;
+      }
+    };
+  }
+
+  const workerRuntime = wrapRuntimeForCost(
+    workerRuntimeFactory({ rootDir, env }),
+    routing.owner?.runtime?.provider ?? "unknown"
+  );
+  const managerRuntime = wrapRuntimeForCost(managerRuntimeFactory({ rootDir }), "codex");
   const reviewFn = createCodexReviewer({ rootDir, runtime: managerRuntime, managerAgent });
 
   const guards = {
@@ -361,9 +418,18 @@ export async function runCampaignTask(
     beforeManagerCall: () => budget.guards.beforeManagerCall()
   };
 
+  // `campaign.budget.maxAttemptsPerTask` must further cap the loop's attempt
+  // budget (on top of task.maxAttempts and agent.limits.maxAttemptsPerTask,
+  // which review-loop.mjs already combines) without modifying review-loop.mjs
+  // itself — so clamp it into the task object handed to the loop.
+  const taskForLoop = {
+    ...task,
+    maxAttempts: Math.min(task.maxAttempts, campaign.budget.maxAttemptsPerTask)
+  };
+
   const loop = await runReviewLoop(rootDir, {
     campaignId: campaign.campaignId,
-    task,
+    task: taskForLoop,
     agent: routing.owner,
     workerRuntime,
     reviewFn,
@@ -379,6 +445,9 @@ export async function runCampaignTask(
     budget.recordRework();
   }
 
+  // Cost is already accounted for every runtime call via wrapRuntimeForCost
+  // above (worker attempts + manager review calls, including reworks and the
+  // schema-repair retry) — no further estimateCost call is needed here.
   let proposals = { stored: [], rejected: [] };
   if (loop.lastResult) {
     const parsedResult = tryParseTaskResult(loop.lastResult.output);
@@ -389,9 +458,6 @@ export async function runCampaignTask(
         agentId: routing.owner.id,
         proposals: parsedResult.memoryProposals
       });
-    }
-    if (loop.lastResult.usage) {
-      budget.estimateCost(routing.owner?.runtime?.provider ?? "unknown", loop.lastResult.usage);
     }
   }
 

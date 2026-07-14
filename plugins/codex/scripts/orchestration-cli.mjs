@@ -415,6 +415,22 @@ async function handleCampaignReviewProposals(argv) {
   // `budget` mutated `campaign.usage` in place as guards ran; persist it.
   saveCampaign(cwd, campaign);
 
+  if (result.halted) {
+    // Consistent with runCampaignTask: budget exhaustion pauses the
+    // campaign rather than leaving it "running" with no code-level signal.
+    try {
+      setCampaignStatus(cwd, campaignId, "paused");
+    } catch {
+      // Not in a state (e.g. already paused, or not "running") from which
+      // "paused" is a legal transition. Never let that crash this command —
+      // the campaign_paused_budget audit event below still records why.
+    }
+    appendAuditEvent(cwd, campaignId, {
+      event: "campaign_paused_budget",
+      reason: "review-proposals budget exhausted"
+    });
+  }
+
   if (options.json) {
     outputResult(result, true);
     return;
@@ -426,6 +442,9 @@ async function handleCampaignReviewProposals(argv) {
       item.action === "failed" ? `- ${item.proposalId}: failed (${item.error})` : `- ${item.proposalId}: ${item.action}`
     )
   ];
+  if (result.halted) {
+    lines.push("The campaign has been paused on budget exhaustion.");
+  }
   outputResult(`${lines.join("\n")}\n`, false);
 }
 
