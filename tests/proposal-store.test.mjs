@@ -136,6 +136,37 @@ test("recordProposals: audits memory_proposal_recorded once per stored proposal"
   });
 });
 
+test("recordProposals: rejects proposals whose scope is not a valid memory namespace, without throwing or storing", () => {
+  withTempDir((rootDir) => {
+    const malformedScopes = ["../../etc/passwd", "no-slash", "", "agent\\..\\x"];
+    const proposals = malformedScopes.map((scope) => validRawProposal({ scope }));
+
+    let result;
+    assert.doesNotThrow(() => {
+      result = recordProposals(rootDir, {
+        campaignId: "camp-1",
+        taskId: "task-1",
+        agentId: "worker-a",
+        proposals
+      });
+    });
+
+    assert.equal(result.stored.length, 0);
+    assert.equal(result.rejected.length, malformedScopes.length);
+    for (let i = 0; i < malformedScopes.length; i += 1) {
+      assert.equal(result.rejected[i].index, i);
+      assert.ok(Array.isArray(result.rejected[i].errors));
+      assert.ok(
+        result.rejected[i].errors.some((e) => /Invalid memory namespace/.test(e)),
+        `expected an "Invalid memory namespace" error for scope ${JSON.stringify(malformedScopes[i])}, got ${JSON.stringify(result.rejected[i].errors)}`
+      );
+    }
+
+    const proposalsDir = path.join(rootDir, ".ai-company", "memory", "proposals");
+    assert.equal(fs.existsSync(proposalsDir) && fs.readdirSync(proposalsDir).length > 0, false);
+  });
+});
+
 // --- listProposals / loadProposal -----------------------------------------
 
 test("listProposals: sorted by proposalId, with optional status filter", () => {
@@ -360,6 +391,53 @@ test("applyDecision: deciding an already-decided proposal throws (no double-deci
         }),
       /not pending \(status: approved\)/
     );
+  });
+});
+
+test("applyDecision: a proposal with an invalid scope (bypassing recordProposals) throws, stays pending, and writes no memory entry", () => {
+  withTempDir((rootDir) => {
+    const proposalId = "MEM-PROP-badscope-0001";
+    const proposalsDir = path.join(rootDir, ".ai-company", "memory", "proposals");
+    fs.mkdirSync(proposalsDir, { recursive: true });
+
+    // Construct the pending proposal directly on disk, bypassing
+    // recordProposals's scope validation -- this simulates a proposal that
+    // somehow got a malformed scope onto disk (e.g. from a pre-fix version).
+    const badProposal = {
+      proposalId,
+      agentId: "worker-a",
+      scope: "no-slash",
+      content: "Some content.",
+      type: "convention",
+      evidence: ["e"],
+      confidence: 0.5,
+      status: "pending",
+      campaignId: "camp-1",
+      taskId: "task-1"
+    };
+    fs.writeFileSync(path.join(proposalsDir, `${proposalId}.json`), JSON.stringify(badProposal, null, 2));
+
+    assert.throws(
+      () =>
+        applyDecision(rootDir, proposalId, { action: "approve", reason: "ok" }, {
+          campaignId: "camp-1",
+          decidedBy: "manager-codex"
+        }),
+      /Invalid memory namespace/
+    );
+
+    // Still pending -- the failed memory write must not leave a
+    // half-persisted "approved" status with no corresponding memory entry.
+    const loaded = loadProposal(rootDir, proposalId);
+    assert.equal(loaded.status, "pending");
+
+    // No memory entry was created anywhere (the memory dir's namespace
+    // subdirectories were never even created).
+    const memoryDir = path.join(rootDir, ".ai-company", "memory");
+    const anyMemorySubdirExists = ["agents", "domains", "shared"].some((d) =>
+      fs.existsSync(path.join(memoryDir, d))
+    );
+    assert.equal(anyMemorySubdirExists, false);
   });
 });
 

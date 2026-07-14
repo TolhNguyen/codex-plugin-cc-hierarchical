@@ -4,7 +4,7 @@ import path from "node:path";
 import { readJsonFile, writeJsonFile } from "../lib/fs.mjs";
 import { loadOrchestrationSchema, validateAgainstSchema } from "../lib/schema-validator.mjs";
 import { appendAuditEvent } from "../orchestration/audit-log.mjs";
-import { appendMemoryEntry } from "./memory-store.mjs";
+import { appendMemoryEntry, isValidNamespace } from "./memory-store.mjs";
 
 /**
  * Proposal storage: the ONLY worker-visible path into memory governance.
@@ -62,6 +62,11 @@ export function recordProposals(rootDir, { campaignId, taskId, agentId, proposal
     const { valid, errors } = validateAgainstSchema(candidate, schema);
     if (!valid) {
       rejected.push({ index, errors });
+      return;
+    }
+
+    if (!isValidNamespace(candidate.scope)) {
+      rejected.push({ index, errors: [`Invalid memory namespace: ${candidate.scope}`] });
       return;
     }
 
@@ -173,16 +178,12 @@ export function applyDecision(rootDir, proposalId, decision, { campaignId, decid
       throw new Error(`Unknown memory decision action: ${action}`);
   }
 
-  const decidedAt = new Date().toISOString();
-  const updated = {
-    ...proposal,
-    status,
-    decidedBy,
-    decidedAt,
-    ...(finalContent !== null ? { finalContent } : {})
-  };
-  writeJsonFile(proposalFilePath(rootDir, proposalId), updated);
-
+  // Perform the memory write (if any) BEFORE persisting the new proposal
+  // status. `appendMemoryEntry` validates the namespace itself and throws
+  // before touching disk if it's malformed, so a bad scope surfaces as a
+  // thrown error here and the proposal file below is never written --
+  // it stays "pending" on disk rather than getting stuck "approved"/"edited"
+  // with no corresponding memory entry.
   let entry = null;
   if (status === "approved" || status === "edited") {
     entry = appendMemoryEntry(rootDir, proposal.scope, {
@@ -192,6 +193,16 @@ export function applyDecision(rootDir, proposalId, decision, { campaignId, decid
       agentId: proposal.agentId
     });
   }
+
+  const decidedAt = new Date().toISOString();
+  const updated = {
+    ...proposal,
+    status,
+    decidedBy,
+    decidedAt,
+    ...(finalContent !== null ? { finalContent } : {})
+  };
+  writeJsonFile(proposalFilePath(rootDir, proposalId), updated);
 
   const effectiveCampaignId = campaignId ?? proposal.campaignId;
   appendAuditEvent(rootDir, effectiveCampaignId, {

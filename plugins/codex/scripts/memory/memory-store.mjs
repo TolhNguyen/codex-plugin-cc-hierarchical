@@ -20,8 +20,21 @@ import { generateJobId } from "../lib/state.mjs";
 
 const NAMESPACE_RE = /^[a-z0-9][a-z0-9-]*(\/[a-z0-9][a-z0-9._-]*)+$/;
 
+/**
+ * Predicate form of the namespace format check, for callers that need to
+ * validate (and reject gracefully) without relying on a thrown exception —
+ * e.g. `recordProposals`, which must never throw on worker-supplied input.
+ * Same regex, same rules as `assertValidNamespace`; does not change behavior.
+ *
+ * @param {unknown} namespace
+ * @returns {boolean}
+ */
+export function isValidNamespace(namespace) {
+  return typeof namespace === "string" && NAMESPACE_RE.test(namespace);
+}
+
 function assertValidNamespace(namespace) {
-  if (typeof namespace !== "string" || !NAMESPACE_RE.test(namespace)) {
+  if (!isValidNamespace(namespace)) {
     throw new Error(`Invalid memory namespace: ${namespace}`);
   }
 }

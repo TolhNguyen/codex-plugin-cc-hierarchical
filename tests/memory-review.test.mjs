@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import path from "node:path";
 
 import { createMemoryReviewer, reviewPendingProposals } from "../plugins/codex/scripts/memory/memory-review.mjs";
 import { recordProposals, loadProposal } from "../plugins/codex/scripts/memory/proposal-store.mjs";
@@ -241,6 +242,63 @@ test("reviewPendingProposals: a guard throw halts processing with a partial proc
 
     const second = loadProposal(rootDir, sortedIds[1]);
     assert.equal(second.status, "pending");
+  });
+});
+
+test("reviewPendingProposals: a mid-batch applyDecision failure is recorded as 'failed' and processing continues", async () => {
+  await withTempDir(async (rootDir) => {
+    const proposalsDir = path.join(rootDir, ".ai-company", "memory", "proposals");
+    fs.mkdirSync(proposalsDir, { recursive: true });
+
+    function writeRawProposal(proposalId, overrides = {}) {
+      const doc = {
+        proposalId,
+        agentId: "worker-a",
+        scope: "project/shared",
+        content: `Content for ${proposalId}`,
+        type: "convention",
+        evidence: ["e"],
+        confidence: 0.5,
+        status: "pending",
+        campaignId: "camp-1",
+        taskId: "task-1",
+        ...overrides
+      };
+      fs.writeFileSync(path.join(proposalsDir, `${proposalId}.json`), JSON.stringify(doc, null, 2));
+      return doc;
+    }
+
+    // Middle proposal (by sorted proposalId) has a scope that can never have
+    // slipped past recordProposals's validation -- simulating a pre-existing
+    // bad proposal -- so applyDecision throws for it specifically.
+    writeRawProposal("MEM-PROP-1");
+    writeRawProposal("MEM-PROP-2", { scope: "no-slash" });
+    writeRawProposal("MEM-PROP-3");
+
+    const decide = async () => ({ action: "approve", reason: "good" });
+
+    const result = await reviewPendingProposals(rootDir, {
+      campaignId: "camp-1",
+      decide,
+      decidedBy: "manager-codex"
+    });
+
+    assert.equal(result.halted, false);
+    assert.equal(result.processed.length, 3);
+
+    assert.equal(result.processed[0].proposalId, "MEM-PROP-1");
+    assert.equal(result.processed[0].action, "approve");
+
+    assert.equal(result.processed[1].proposalId, "MEM-PROP-2");
+    assert.equal(result.processed[1].action, "failed");
+    assert.match(result.processed[1].error, /Invalid memory namespace/);
+
+    assert.equal(result.processed[2].proposalId, "MEM-PROP-3");
+    assert.equal(result.processed[2].action, "approve");
+
+    assert.equal(loadProposal(rootDir, "MEM-PROP-1").status, "approved");
+    assert.equal(loadProposal(rootDir, "MEM-PROP-2").status, "pending");
+    assert.equal(loadProposal(rootDir, "MEM-PROP-3").status, "approved");
   });
 });
 

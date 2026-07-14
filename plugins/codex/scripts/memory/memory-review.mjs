@@ -92,11 +92,14 @@ export function createMemoryReviewer({ rootDir, runtime, managerAgent, pluginRoo
  * applies each resulting decision via `applyDecision`. A `guards.beforeManagerCall`
  * throw stops processing immediately and returns what was processed so far
  * with `halted: true` — the same "budget guard before every manager call"
- * pattern as `runReviewLoop`.
+ * pattern as `runReviewLoop`. A failure from `decide` or `applyDecision` for
+ * one proposal (e.g. a malformed scope that slipped past `recordProposals`)
+ * is recorded as `{ proposalId, action: "failed", error }` and does NOT
+ * abort the batch — the remaining pending proposals are still processed.
  *
  * @param {string} rootDir
  * @param {{ campaignId: string, decide: Function, decidedBy: string, guards?: { beforeManagerCall?: Function } }} options
- * @returns {Promise<{ processed: { proposalId: string, action: string }[], halted: boolean }>}
+ * @returns {Promise<{ processed: { proposalId: string, action: string, error?: string }[], halted: boolean }>}
  */
 export async function reviewPendingProposals(rootDir, { campaignId, decide, decidedBy, guards = {} } = {}) {
   const pending = listProposals(rootDir, { status: "pending" });
@@ -109,9 +112,17 @@ export async function reviewPendingProposals(rootDir, { campaignId, decide, deci
       return { processed, halted: true };
     }
 
-    const decision = await decide(proposal, {});
-    applyDecision(rootDir, proposal.proposalId, decision, { campaignId, decidedBy });
-    processed.push({ proposalId: proposal.proposalId, action: decision.action });
+    try {
+      const decision = await decide(proposal, {});
+      applyDecision(rootDir, proposal.proposalId, decision, { campaignId, decidedBy });
+      processed.push({ proposalId: proposal.proposalId, action: decision.action });
+    } catch (error) {
+      processed.push({
+        proposalId: proposal.proposalId,
+        action: "failed",
+        error: error?.message ?? String(error)
+      });
+    }
   }
 
   return { processed, halted: false };
