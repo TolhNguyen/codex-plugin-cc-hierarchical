@@ -182,6 +182,12 @@ export function createOpenAICompatibleRuntime({
     if (typeof userPrompt !== "string" || userPrompt.length === 0) {
       throw new Error("context.userPrompt is required and must be a non-empty string.");
     }
+    if (!agent || typeof agent !== "object") {
+      throw new Error("agent is required and must be an object.");
+    }
+    if (typeof agent.id !== "string" || agent.id.length === 0) {
+      throw new Error("agent.id is required and must be a non-empty string.");
+    }
 
     const executionId = generateExecutionId();
     const startedAt = now();

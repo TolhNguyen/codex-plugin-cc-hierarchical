@@ -67,6 +67,86 @@ function validTaskResult(overrides = {}) {
 
 const BASE_CONTEXT = { systemPrompt: "You are a worker.", userPrompt: "Do the task." };
 
+// --- Input Validation: agent validation before any state mutation -----------
+
+test("execute: null agent rejects before creating an execution entry", async () => {
+  await withTempDir(async (rootDir) => {
+    await withServer([], async (server) => {
+      const runtime = createOpenAICompatibleRuntime({ rootDir, env: makeEnv(server) });
+      const task = { taskId: "task-1", verificationCommands: [] };
+
+      // execute() is an async function: a synchronous `throw` inside it never
+      // escapes as a synchronous exception -- it always surfaces as a promise
+      // rejection. assert.rejects (not assert.throws) is required to observe it.
+      await assert.rejects(
+        () => runtime.execute(null, task, BASE_CONTEXT),
+        /agent is required and must be an object/
+      );
+
+      // Verify no execution entry was created
+      assert.equal(runtime.getStatus("any-id"), null);
+
+      // Verify no execution record was written
+      const executionsDir = path.join(rootDir, ".ai-company", "executions");
+      const dirExists = fs.existsSync(executionsDir);
+      if (dirExists) {
+        const files = fs.readdirSync(executionsDir);
+        assert.equal(files.length, 0, "executions directory should be empty");
+      }
+    });
+  });
+});
+
+test("execute: agent without an id rejects before creating an execution entry", async () => {
+  await withTempDir(async (rootDir) => {
+    await withServer([], async (server) => {
+      const runtime = createOpenAICompatibleRuntime({ rootDir, env: makeEnv(server) });
+      const task = { taskId: "task-1", verificationCommands: [] };
+
+      await assert.rejects(
+        () => runtime.execute({}, task, BASE_CONTEXT),
+        /agent.id is required and must be a non-empty string/
+      );
+
+      // Verify no execution entry was created
+      assert.equal(runtime.getStatus("any-id"), null);
+
+      // Verify no execution record was written
+      const executionsDir = path.join(rootDir, ".ai-company", "executions");
+      const dirExists = fs.existsSync(executionsDir);
+      if (dirExists) {
+        const files = fs.readdirSync(executionsDir);
+        assert.equal(files.length, 0, "executions directory should be empty");
+      }
+    });
+  });
+});
+
+test("execute: agent with empty string id rejects before creating an execution entry", async () => {
+  await withTempDir(async (rootDir) => {
+    await withServer([], async (server) => {
+      const runtime = createOpenAICompatibleRuntime({ rootDir, env: makeEnv(server) });
+      const task = { taskId: "task-1", verificationCommands: [] };
+
+      await assert.rejects(
+        () => runtime.execute({ id: "" }, task, BASE_CONTEXT),
+        /agent.id is required and must be a non-empty string/
+      );
+
+      // Verify no execution entry was created
+      assert.equal(runtime.getStatus("any-id"), null);
+
+      // Verify no execution record was written
+      const executionsDir = path.join(rootDir, ".ai-company", "executions");
+      const dirExists = fs.existsSync(executionsDir);
+      if (dirExists) {
+        const files = fs.readdirSync(executionsDir);
+        assert.equal(files.length, 0, "executions directory should be empty");
+      }
+    });
+  });
+});
+
 // --- Scenario 1: happy path -------------------------------------------------
 
 test("execute: happy path (read -> write -> run_command -> submit_result) completes and never leaks the api key", async () => {
@@ -360,10 +440,19 @@ test("execute: a missing API key fails without making any HTTP request", async (
 
 test("cancel: aborting a delayed in-flight request finalizes the run as cancelled", async () => {
   await withTempDir(async (rootDir) => {
+    // The fixture holds the HTTP response open for 1000ms. cancelRequested alone
+    // cannot resolve the run until the *next* loop iteration reaches its check --
+    // the only way execute() can resolve to "cancelled" well before the fixture's
+    // delay elapses is if cancel() actually aborts the in-flight fetch. This proves
+    // real interruption rather than a cancelRequested flag that happens to be
+    // observed on a later loop pass.
+    const FIXTURE_DELAY_MS = 1000;
+    const MAX_ACCEPTABLE_RESOLUTION_MS = 400;
+
     await withServer(
       [
         async () => {
-          await sleep(500);
+          await sleep(FIXTURE_DELAY_MS);
           return contentResponse("too late");
         }
       ],
@@ -386,10 +475,19 @@ test("cancel: aborting a delayed in-flight request finalizes the run as cancelle
         const cancelResult = await runtime.cancel(capturedExecutionId);
         assert.equal(cancelResult.attempted, true);
 
+        const beforeResolveMs = Date.now();
         const result = await executePromise;
+        const resolutionMs = Date.now() - beforeResolveMs;
+
         assert.equal(result.status, "cancelled");
         assert.equal(result.executionId, capturedExecutionId);
         assert.deepEqual(runtime.getStatus(capturedExecutionId), { executionId: capturedExecutionId, state: "done" });
+        assert.ok(
+          resolutionMs < MAX_ACCEPTABLE_RESOLUTION_MS,
+          `expected cancel to abort the in-flight fetch and resolve in well under the ` +
+            `${FIXTURE_DELAY_MS}ms fixture delay (took ${resolutionMs}ms) -- a no-op abort() ` +
+            `would only resolve once the fixture's response arrives`
+        );
       }
     );
   });
