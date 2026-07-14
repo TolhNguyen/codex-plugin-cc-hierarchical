@@ -71,79 +71,70 @@ const BASE_CONTEXT = { systemPrompt: "You are a worker.", userPrompt: "Do the ta
 
 test("execute: null agent rejects before creating an execution entry", async () => {
   await withTempDir(async (rootDir) => {
-    await withServer([], async (server) => {
-      const runtime = createOpenAICompatibleRuntime({ rootDir, env: makeEnv(server) });
-      const task = { taskId: "task-1", verificationCommands: [] };
+    const runtime = createOpenAICompatibleRuntime({ rootDir });
+    const task = { taskId: "task-1", verificationCommands: [] };
 
-      // execute() is an async function: a synchronous `throw` inside it never
-      // escapes as a synchronous exception -- it always surfaces as a promise
-      // rejection. assert.rejects (not assert.throws) is required to observe it.
-      await assert.rejects(
-        () => runtime.execute(null, task, BASE_CONTEXT),
-        /agent is required and must be an object/
-      );
+    await assert.rejects(
+      async () => runtime.execute(null, task, BASE_CONTEXT),
+      /agent is required and must be an object/
+    );
 
-      // Verify no execution entry was created
-      assert.equal(runtime.getStatus("any-id"), null);
+    // Verify no execution entry was created
+    assert.equal(runtime.getStatus("any-id"), null);
 
-      // Verify no execution record was written
-      const executionsDir = path.join(rootDir, ".ai-company", "executions");
-      const dirExists = fs.existsSync(executionsDir);
-      if (dirExists) {
-        const files = fs.readdirSync(executionsDir);
-        assert.equal(files.length, 0, "executions directory should be empty");
-      }
-    });
+    // Verify no execution record was written
+    const executionsDir = path.join(rootDir, ".ai-company", "executions");
+    const dirExists = fs.existsSync(executionsDir);
+    if (dirExists) {
+      const files = fs.readdirSync(executionsDir);
+      assert.equal(files.length, 0, "executions directory should be empty");
+    }
   });
 });
 
 test("execute: agent without an id rejects before creating an execution entry", async () => {
   await withTempDir(async (rootDir) => {
-    await withServer([], async (server) => {
-      const runtime = createOpenAICompatibleRuntime({ rootDir, env: makeEnv(server) });
-      const task = { taskId: "task-1", verificationCommands: [] };
+    const runtime = createOpenAICompatibleRuntime({ rootDir });
+    const task = { taskId: "task-1", verificationCommands: [] };
 
-      await assert.rejects(
-        () => runtime.execute({}, task, BASE_CONTEXT),
-        /agent.id is required and must be a non-empty string/
-      );
+    await assert.rejects(
+      async () => runtime.execute({}, task, BASE_CONTEXT),
+      /agent.id is required and must be a non-empty string/
+    );
 
-      // Verify no execution entry was created
-      assert.equal(runtime.getStatus("any-id"), null);
+    // Verify no execution entry was created
+    assert.equal(runtime.getStatus("any-id"), null);
 
-      // Verify no execution record was written
-      const executionsDir = path.join(rootDir, ".ai-company", "executions");
-      const dirExists = fs.existsSync(executionsDir);
-      if (dirExists) {
-        const files = fs.readdirSync(executionsDir);
-        assert.equal(files.length, 0, "executions directory should be empty");
-      }
-    });
+    // Verify no execution record was written
+    const executionsDir = path.join(rootDir, ".ai-company", "executions");
+    const dirExists = fs.existsSync(executionsDir);
+    if (dirExists) {
+      const files = fs.readdirSync(executionsDir);
+      assert.equal(files.length, 0, "executions directory should be empty");
+    }
   });
 });
 
 test("execute: agent with empty string id rejects before creating an execution entry", async () => {
   await withTempDir(async (rootDir) => {
-    await withServer([], async (server) => {
-      const runtime = createOpenAICompatibleRuntime({ rootDir, env: makeEnv(server) });
-      const task = { taskId: "task-1", verificationCommands: [] };
+    const runtime = createOpenAICompatibleRuntime({ rootDir });
+    const task = { taskId: "task-1", verificationCommands: [] };
 
-      await assert.rejects(
-        () => runtime.execute({ id: "" }, task, BASE_CONTEXT),
-        /agent.id is required and must be a non-empty string/
-      );
+    await assert.rejects(
+      async () => runtime.execute({ id: "" }, task, BASE_CONTEXT),
+      /agent.id is required and must be a non-empty string/
+    );
 
-      // Verify no execution entry was created
-      assert.equal(runtime.getStatus("any-id"), null);
+    // Verify no execution entry was created
+    assert.equal(runtime.getStatus("any-id"), null);
 
-      // Verify no execution record was written
-      const executionsDir = path.join(rootDir, ".ai-company", "executions");
-      const dirExists = fs.existsSync(executionsDir);
-      if (dirExists) {
-        const files = fs.readdirSync(executionsDir);
-        assert.equal(files.length, 0, "executions directory should be empty");
-      }
-    });
+    // Verify no execution record was written
+    const executionsDir = path.join(rootDir, ".ai-company", "executions");
+    const dirExists = fs.existsSync(executionsDir);
+    if (dirExists) {
+      const files = fs.readdirSync(executionsDir);
+      assert.equal(files.length, 0, "executions directory should be empty");
+    }
   });
 });
 
