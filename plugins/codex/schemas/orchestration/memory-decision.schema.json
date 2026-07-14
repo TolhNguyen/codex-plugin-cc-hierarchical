@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "MemoryDecision",
+  "description": "Manager output contract deciding the fate of a pending memory proposal.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "action",
+    "reason"
+  ],
+  "properties": {
+    "action": {
+      "type": "string",
+      "enum": [
+        "approve",
+        "edit_and_approve",
+        "reject",
+        "escalate"
+      ]
+    },
+    "reason": {
+      "type": "string"
+    },
+    "finalContent": {
+      "type": "string"
+    }
+  }
+}
