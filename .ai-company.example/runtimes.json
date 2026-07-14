@@ -1,0 +1,17 @@
+{
+  "deepseek": {
+    "baseUrlEnv": "DEEPSEEK_BASE_URL",
+    "apiKeyEnv": "DEEPSEEK_API_KEY",
+    "defaultModel": "deepseek-chat"
+  },
+  "openai-compatible": {
+    "baseUrlEnv": "OPENAI_COMPAT_BASE_URL",
+    "apiKeyEnv": "OPENAI_COMPAT_API_KEY",
+    "defaultModel": null
+  },
+  "local-vllm": {
+    "baseUrlEnv": "LOCAL_VLLM_BASE_URL",
+    "apiKeyEnv": "LOCAL_VLLM_API_KEY",
+    "defaultModel": "qwen2.5-coder-32b-instruct"
+  }
+}

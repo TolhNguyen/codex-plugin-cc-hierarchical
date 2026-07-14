@@ -1,0 +1,61 @@
+{
+  "id": "test-and-verification-worker-01",
+  "name": "Test and Verification Worker",
+  "type": "persistent",
+  "status": "active",
+  "ownership": {
+    "primary": [
+      "tests/**"
+    ],
+    "secondary": [
+      "plugins/codex/scripts/**"
+    ],
+    "excluded": [
+      ".ai-company/**",
+      ".git/**"
+    ]
+  },
+  "responsibilities": [
+    "Extend and maintain node:test coverage for new and existing orchestration modules",
+    "Verify every change against `npm test` before reporting a task as complete",
+    "Follow this repository's existing fixture-over-mock testing style"
+  ],
+  "skills": [
+    "core/task-execution@1.0.0",
+    "technical/node-test-authoring@1.0.0",
+    "project/codex-plugin-test-conventions@1.0.0"
+  ],
+  "memory": {
+    "namespaces": [
+      "agent/test-and-verification-worker-01",
+      "project/shared"
+    ]
+  },
+  "permissions": {
+    "read": [
+      "tests/**",
+      "plugins/codex/scripts/**",
+      "docs/**",
+      "package.json"
+    ],
+    "write": [
+      "tests/**"
+    ]
+  },
+  "runtime": {
+    "provider": "deepseek",
+    "model": "deepseek-chat"
+  },
+  "limits": {
+    "maxAttemptsPerTask": 3,
+    "maxExecutionMinutes": 20,
+    "maxToolCalls": 40
+  },
+  "approvals": [
+    {
+      "role": "engineering-lead",
+      "decision": "approve",
+      "at": "2026-07-01T12:00:00.000Z"
+    }
+  ]
+}

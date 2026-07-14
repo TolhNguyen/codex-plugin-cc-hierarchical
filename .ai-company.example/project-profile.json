@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "generatedAt": "2026-07-01T09:00:00.000Z",
+  "languages": [
+    "javascript"
+  ],
+  "frameworks": [
+    "typescript"
+  ],
+  "commands": {
+    "test": "node --test tests/*.test.mjs",
+    "build": "tsc -p tsconfig.app-server.json",
+    "lint": null
+  },
+  "structure": {
+    "dirs": [
+      ".claude",
+      ".claude-plugin",
+      ".github",
+      "docs",
+      "plugins",
+      "scripts",
+      "tests"
+    ],
+    "entryPoints": [
+      "scripts/bump-version.mjs"
+    ]
+  },
+  "docs": [
+    "README.md",
+    "docs/CURRENT_ARCHITECTURE.md",
+    "docs/MVP_PLAN.md",
+    "docs/TARGET_ARCHITECTURE.md"
+  ],
+  "capabilities": {
+    "technical": [
+      "nodejs",
+      "typescript",
+      "background-jobs",
+      "socket-communication",
+      "http-api",
+      "structured-state"
+    ],
+    "domains": [],
+    "crossCutting": [
+      "testing",
+      "ci",
+      "concurrency"
+    ]
+  },
+  "testLayout": {
+    "dir": "tests",
+    "pattern": "*.test.*",
+    "runner": "node:test"
+  },
+  "ci": {
+    "provider": "github-actions",
+    "workflows": [
+      ".github/workflows/pull-request-ci.yml"
+    ]
+  }
+}

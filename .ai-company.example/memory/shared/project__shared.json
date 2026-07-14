@@ -1,0 +1,22 @@
+{
+  "namespace": "project/shared",
+  "version": 1,
+  "entries": [
+    {
+      "entryId": "mem-lz9k3f-a1b2c3",
+      "content": "Windows CI cannot reliably taskkill a spawned Codex child process by PID alone (`taskkill /PID <pid> /T /F` fails with 'Invalid argument/option'); this is a known host-environment gap in tests/runtime.test.mjs's cancel/session-end tests, not a regression to chase.",
+      "type": "failure-pattern",
+      "sourceProposalId": "MEM-PROP-lz9k1a-x7y8",
+      "agentId": "test-and-verification-worker-01",
+      "createdAt": "2026-07-02T09:15:00.000Z"
+    },
+    {
+      "entryId": "mem-lz9k4g-d4e5f6",
+      "content": "New test files must be named `tests/<name>.test.mjs` and placed directly under tests/ (no subdirectories) or `npm test`'s glob (`node --test tests/*.test.mjs`) will silently skip them.",
+      "type": "convention",
+      "sourceProposalId": "MEM-PROP-lz9k2b-p3q4",
+      "agentId": "test-and-verification-worker-01",
+      "createdAt": "2026-07-02T09:20:00.000Z"
+    }
+  ]
+}

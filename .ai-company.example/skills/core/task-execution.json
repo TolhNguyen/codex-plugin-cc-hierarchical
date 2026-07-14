@@ -1,0 +1,52 @@
+{
+  "id": "core/task-execution",
+  "version": "1.0.0",
+  "status": "active",
+  "purpose": "Baseline execution discipline for any assigned task, regardless of domain: read the full task spec before acting, stay inside the declared scope, and verify before reporting completion.",
+  "useWhen": [
+    "Every task assigned to a worker agent, in addition to any domain/technical/project skill it also requires"
+  ],
+  "dontUseWhen": [
+    "Never skip this skill — it is the baseline every task requires"
+  ],
+  "requiredInputs": [
+    "task.goal",
+    "task.affectedPaths",
+    "task.verificationCommands",
+    "task.acceptanceCriteria"
+  ],
+  "procedure": [
+    "Read the full task goal and every acceptance criterion before making any change",
+    "Stay strictly inside task.affectedPaths; never touch a file outside that scope",
+    "Make the smallest change that satisfies the acceptance criteria",
+    "Run every command in task.verificationCommands and record the real output",
+    "Only call submit_result once verification has actually been run, not assumed"
+  ],
+  "verificationSteps": [
+    "Every command in task.verificationCommands was actually executed via run_command",
+    "verification.passed in the submitted task-result reflects the real command exit codes, not an assumption"
+  ],
+  "doneWhen": [
+    "All acceptance criteria are satisfied and verification.passed is true",
+    "submit_result has been called with a schema-valid task-result document"
+  ],
+  "escalateWhen": [
+    "The task cannot be completed within the declared affectedPaths",
+    "A required verification command fails after a reasonable fix attempt",
+    "The task goal is ambiguous or contradicts the acceptance criteria"
+  ],
+  "outputContract": "task-result",
+  "sources": [
+    "plugins/codex/schemas/orchestration/task.schema.json",
+    "plugins/codex/schemas/orchestration/task-result.schema.json"
+  ],
+  "owner": "manager-codex",
+  "approvedBy": "engineering-lead",
+  "evaluations": [
+    {
+      "taskId": "eval-core-task-execution-01",
+      "outcome": "pass",
+      "at": "2026-06-28T10:00:00.000Z"
+    }
+  ]
+}

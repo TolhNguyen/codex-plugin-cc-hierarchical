@@ -1,0 +1,53 @@
+{
+  "id": "project/codex-plugin-test-conventions",
+  "version": "1.0.0",
+  "status": "active",
+  "purpose": "Follow this specific repository's test file naming, directory structure, and helper-reuse conventions so new tests fit the existing suite.",
+  "useWhen": [
+    "Any test file added or modified in this repository (codex-plugin-cc)"
+  ],
+  "dontUseWhen": [
+    "Working in a different repository with its own test conventions"
+  ],
+  "requiredInputs": [
+    "tests/helpers.mjs",
+    "tests/fake-codex-fixture.mjs",
+    "an existing sibling test file to match style against"
+  ],
+  "procedure": [
+    "Name every test file `*.test.mjs` and place it directly under `tests/` (no nested subdirectories)",
+    "Reuse `tests/helpers.mjs` for shared setup (temp working dirs, PATH shims for the fake `codex` binary) instead of duplicating that logic",
+    "Use `tests/fake-codex-fixture.mjs` whenever a test needs to fake the `codex` binary or the app-server JSONL protocol, rather than hand-rolling a stub",
+    "Match the existing style: `node:test`'s `test()`/`describe()`, `node:assert/strict` assertions, no external test framework"
+  ],
+  "verificationSteps": [
+    "New test file lives at `tests/<name>.test.mjs`",
+    "Shared setup goes through `tests/helpers.mjs` rather than being duplicated inline",
+    "`npm test` (which runs `node --test tests/*.test.mjs`) picks up and passes the new file automatically"
+  ],
+  "doneWhen": [
+    "The new test file follows the naming and helper-reuse conventions above and passes under `npm test`"
+  ],
+  "escalateWhen": [
+    "The existing helpers/fixtures do not support the scenario being tested and extending them is outside the task's declared scope"
+  ],
+  "outputContract": "task-result",
+  "sources": [
+    "package.json#scripts.test",
+    "tests/helpers.mjs",
+    "tests/fake-codex-fixture.mjs"
+  ],
+  "owner": "manager-codex",
+  "requires": [
+    "core/task-execution",
+    "technical/node-test-authoring"
+  ],
+  "approvedBy": "engineering-lead",
+  "evaluations": [
+    {
+      "taskId": "eval-codex-plugin-test-conventions-01",
+      "outcome": "pass",
+      "at": "2026-06-29T11:00:00.000Z"
+    }
+  ]
+}

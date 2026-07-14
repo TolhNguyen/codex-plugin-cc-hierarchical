@@ -1,0 +1,96 @@
+{
+  "topologyType": "workflow-oriented",
+  "rationale": "The repository is small (~4.3k LOC of scripts) with high cohesion around a single Codex runtime layer and one dominant workflow: writing and extending node:test coverage, verified by `npm test`. There is no evidence of independent, high-cohesion domain areas that would justify more than one persistent agent, so this proposal follows the 'prefer exactly one persistent agent plus temporary-templates for small repositories' rule instead of a domain or layer split.",
+  "agents": [
+    {
+      "id": "test-and-verification-worker-01",
+      "name": "Test and Verification Worker",
+      "type": "persistent",
+      "responsibilities": [
+        "Extend and maintain node:test coverage for new and existing orchestration modules",
+        "Verify every change against `npm test` before reporting a task as complete",
+        "Follow this repository's existing fixture-over-mock testing style"
+      ],
+      "ownership": {
+        "primary": [
+          "tests/**"
+        ],
+        "secondary": [
+          "plugins/codex/scripts/**"
+        ],
+        "excluded": [
+          ".ai-company/**",
+          ".git/**"
+        ]
+      },
+      "permissions": {
+        "read": [
+          "tests/**",
+          "plugins/codex/scripts/**",
+          "docs/**",
+          "package.json"
+        ],
+        "write": [
+          "tests/**"
+        ]
+      },
+      "skills": [
+        "core/task-execution",
+        "technical/node-test-authoring",
+        "project/codex-plugin-test-conventions"
+      ],
+      "rationale": "Owns real, recurring work (test coverage), has independently verifiable output (`npm test`), and its write scope can be restricted to `tests/**` only — meets all four conditions for a persistent agent."
+    }
+  ],
+  "skillDrafts": [
+    {
+      "id": "technical/node-test-authoring",
+      "purpose": "Write and extend tests using Node's built-in `node:test` runner with zero test-framework dependencies.",
+      "sources": [
+        "package.json#scripts.test",
+        "tests/helpers.mjs",
+        "tests/fake-codex-fixture.mjs"
+      ],
+      "useWhen": [
+        "Adding coverage for a new or changed module under plugins/codex/scripts/**"
+      ],
+      "procedure": [
+        "Locate or create a `tests/<module-name>.test.mjs` file",
+        "Import assertions from `node:assert/strict` and the test runner from `node:test`",
+        "Prefer fixtures (e.g. `tests/fake-codex-fixture.mjs`) over mocks for external processes",
+        "Run `node --test tests/*.test.mjs` locally before submitting"
+      ],
+      "verificationSteps": [
+        "`npm test` passes with the new/changed test file included"
+      ]
+    },
+    {
+      "id": "project/codex-plugin-test-conventions",
+      "purpose": "Follow this repository's specific test file naming, structure and helper conventions.",
+      "sources": [
+        "package.json#scripts.test",
+        "tests/helpers.mjs",
+        "tests/fake-codex-fixture.mjs"
+      ],
+      "useWhen": [
+        "Any test file added or modified in this repository"
+      ],
+      "procedure": [
+        "Name every test file `*.test.mjs` under `tests/`",
+        "Reuse `tests/helpers.mjs` for shared setup (temp dirs, PATH shims) instead of duplicating it",
+        "Use `tests/fake-codex-fixture.mjs` when a test needs to fake the `codex` binary or app-server protocol"
+      ],
+      "verificationSteps": [
+        "New test file matches the naming and helper-reuse conventions above"
+      ]
+    }
+  ],
+  "overlaps": [
+    "None: a single persistent agent owns tests/**, with read-only secondary access to plugins/codex/scripts/** for context."
+  ],
+  "risks": [
+    "A single persistent agent means all worker-tier work funnels through one identity; if task volume grows, revisit the one-agent decision.",
+    "The worker model (DeepSeek-class) may produce invalid tool calls or loop on ambiguous test failures — mitigated by the bounded review loop and low maxToolCalls."
+  ],
+  "notes": "See docs/MVP_PLAN.md §2 for the design rationale this proposal mirrors."
+}

@@ -1,0 +1,55 @@
+{
+  "id": "technical/node-test-authoring",
+  "version": "1.0.0",
+  "status": "active",
+  "purpose": "Write and extend tests using Node's built-in node:test runner with zero test-framework dependencies, following a fixture-over-mock style for external processes.",
+  "useWhen": [
+    "Adding or extending test coverage in a Node.js project that uses node:test instead of jest/vitest",
+    "The project's package.json#scripts.test invokes `node --test`"
+  ],
+  "dontUseWhen": [
+    "The project uses jest, vitest, mocha or another test framework instead of node:test",
+    "The change is not testable via node:test (e.g. it needs a browser environment)"
+  ],
+  "requiredInputs": [
+    "the module or behavior under test",
+    "the project's existing test file conventions (see project/codex-plugin-test-conventions)"
+  ],
+  "procedure": [
+    "Locate or create a `tests/<module-name>.test.mjs` file",
+    "Import assertions from `node:assert/strict` and `test`/`describe` from `node:test`",
+    "Prefer a fixture (a fake implementation of the external dependency) over a mocking library when a test needs to stand in for a process, server, or filesystem",
+    "Keep each `test()` block focused on one behavior; name it as a full sentence describing that behavior",
+    "Run `node --test tests/*.test.mjs` locally and confirm the new test passes before submitting"
+  ],
+  "verificationSteps": [
+    "`npm test` (or the project's equivalent node --test invocation) passes with the new/changed test file included",
+    "The new test fails if the change under test is reverted (sanity-checked before submission)"
+  ],
+  "doneWhen": [
+    "The new/changed test file passes under node --test",
+    "No test framework dependency was added to package.json"
+  ],
+  "escalateWhen": [
+    "The behavior under test cannot be exercised without a dependency this skill forbids (e.g. requires jest-specific mocking)",
+    "An existing fixture does not cover the external dependency being tested and building one is out of the task's declared scope"
+  ],
+  "outputContract": "task-result",
+  "sources": [
+    "package.json#scripts.test",
+    "tests/helpers.mjs",
+    "tests/fake-codex-fixture.mjs"
+  ],
+  "owner": "manager-codex",
+  "requires": [
+    "core/task-execution"
+  ],
+  "approvedBy": "engineering-lead",
+  "evaluations": [
+    {
+      "taskId": "eval-node-test-authoring-01",
+      "outcome": "pass",
+      "at": "2026-06-29T10:00:00.000Z"
+    }
+  ]
+}
