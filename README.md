@@ -7,6 +7,12 @@ they already have.
 
 <video src="./docs/plugin-demo.webm" controls muted playsinline autoplay></video>
 
+> **This is an independent fork.** It keeps every original Codex feature below and adds a
+> **[Hierarchical Agent Runtime](#hierarchical-agent-runtime-fork-extension)** — a 3-tier
+> Executive / Manager / Worker orchestration layer that can run a bounded, budgeted "campaign"
+> of work using a cheap OpenAI-compatible model (e.g. DeepSeek) as the worker. Not affiliated
+> with or endorsed by OpenAI. Licensed under Apache-2.0 (see `LICENSE`/`NOTICE`).
+
 ## What You Get
 
 - `/codex:review` for a normal read-only Codex review
@@ -263,6 +269,101 @@ Then check in with:
 /codex:status
 /codex:result
 ```
+
+## Hierarchical Agent Runtime (fork extension)
+
+This fork adds an orchestration layer on top of the Codex integration. It treats a large piece of
+work as a **campaign** run by a small AI "company" with three tiers:
+
+- **Executive** — you + Claude in this session. Sets the goal and acceptance criteria, approves
+  plans, and signs off. No extra API keys; it is just the interactive session.
+- **Manager** — Codex, via the same app-server this plugin already uses. Analyzes the repo,
+  proposes an agent topology, routes tasks, and reviews worker output with schema-constrained
+  decisions.
+- **Worker** — a cheap OpenAI-compatible model (DeepSeek by default) running a **bounded** tool
+  loop (read/list/write files, run allow-listed verification commands, submit a structured
+  result). Workers only ever see assembled context — never the whole repo.
+
+Agent identity is independent of the model: an agent is `ownership + responsibilities + skills +
+memory + permissions + runtime`, and the runtime (provider/model) can be swapped without losing
+anything else.
+
+### Requirements (worker tier)
+
+The Manager (Codex) uses your existing Codex login. The Worker tier needs an OpenAI-compatible
+endpoint, supplied via environment variables (keys are **never** written to disk — config files
+store env-var *names* only):
+
+```bash
+# DeepSeek (default preset)
+export DEEPSEEK_API_KEY=sk-...
+# or any OpenAI-compatible endpoint
+export OPENAI_COMPAT_BASE_URL=https://your-endpoint/v1
+export OPENAI_COMPAT_API_KEY=...
+```
+
+### Commands
+
+- `/codex:bootstrap-agents` — analyze the repository and propose an agent topology + draft skills.
+  Nothing is activated automatically. Approve with
+  `/codex:bootstrap-agents --approve --approved-by <role>`.
+- `/codex:skill list` / `/codex:skill activate <skill-id> --approved-by <role>` — move a skill
+  `draft → active` so routing and workers may use it.
+- `/codex:campaign <create|list|show|run-task|approve|review-proposals|accept>` — run a campaign
+  end-to-end. Approvals, memory decisions, and final acceptance each require an explicit role
+  argument; nothing auto-approves.
+
+### Quickstart
+
+```bash
+export DEEPSEEK_API_KEY=sk-...
+
+/codex:bootstrap-agents                                  # propose topology (writes .ai-company/)
+/codex:bootstrap-agents --approve --approved-by you      # register agents (active) + skills (draft)
+/codex:skill activate technical/node-test-authoring --approved-by you
+
+/codex:campaign create --brief "Add tests for the review loop"
+/codex:campaign approve <campaignId> --approved-by you   # draft/awaiting_approval -> running
+/codex:campaign run-task <campaignId> --task-file task.json
+/codex:campaign review-proposals <campaignId> --decided-by you
+/codex:campaign accept <campaignId> --accepted-by you    # Executive sign-off
+```
+
+### Guardrails (enforced in code, not just prompts)
+
+- **Bounded everything** — the review loop caps attempts; the worker tool loop caps tool calls
+  and wall-clock time; a per-campaign budget throttles Executive/Manager/Worker calls and pauses
+  the campaign (never crashes, never silently continues) when a limit is hit.
+- **Least privilege** — workers read/write only paths their agent permits; the `.ai-company/`
+  governance store is always read- and write-denied to workers; context files are permission-guarded.
+- **Governed memory** — workers can only *propose* memory; a Manager decision (with an explicit
+  approver) is required before anything becomes durable, and rejected proposals are kept for audit.
+- **Auditable** — every routing, attempt, review, budget event, and memory decision is appended to
+  a per-campaign JSONL audit log.
+
+All campaign state lives under `.ai-company/` in your repo. A ready-to-copy example config is in
+[`.ai-company.example/`](./.ai-company.example/).
+
+### Documentation
+
+| Doc | Covers |
+|---|---|
+| [`docs/TARGET_ARCHITECTURE.md`](./docs/TARGET_ARCHITECTURE.md) | Overall design of the 3-tier runtime |
+| [`docs/AGENT_MODEL.md`](./docs/AGENT_MODEL.md) | What an agent is; ownership, permissions, routing |
+| [`docs/SKILL_MODEL.md`](./docs/SKILL_MODEL.md) | Skill tiers and the draft→active lifecycle |
+| [`docs/MEMORY_GOVERNANCE.md`](./docs/MEMORY_GOVERNANCE.md) | Proposal → decision → versioned memory |
+| [`docs/WORKER_RUNTIME.md`](./docs/WORKER_RUNTIME.md) | Runtime contract, the worker tool loop, providers |
+| [`docs/BOOTSTRAP_FLOW.md`](./docs/BOOTSTRAP_FLOW.md) | End-to-end bootstrap → campaign walkthrough |
+| [`docs/CURRENT_ARCHITECTURE.md`](./docs/CURRENT_ARCHITECTURE.md) | The original plugin this builds on |
+
+### Status & known gaps
+
+The runtime is implemented and covered by tests (Node's built-in test runner, no new runtime
+dependencies). It has been validated end-to-end against local fixtures; a real campaign run
+requires a worker API key. Known gaps, tracked for follow-up:
+
+- `agent.ownership.excluded` is present in the schema but not yet enforced by routing.
+- Core skills are not yet auto-copied into `.ai-company/` at bootstrap.
 
 ## Codex Integration
 
