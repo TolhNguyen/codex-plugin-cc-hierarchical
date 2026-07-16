@@ -27,10 +27,17 @@ they already have.
 
 ## Install
 
-Add the marketplace in Claude Code:
+Add **this fork's** marketplace in Claude Code (not the upstream `openai/codex-plugin-cc`, which
+does not contain the hierarchical agent runtime):
 
 ```bash
-/plugin marketplace add openai/codex-plugin-cc
+/plugin marketplace add TolhNguyen/codex-plugin-cc-hierarchical
+```
+
+Or install from a local checkout without pushing anything:
+
+```bash
+/plugin marketplace add D:\codex-plugin-cc
 ```
 
 Install the plugin:
@@ -38,6 +45,10 @@ Install the plugin:
 ```bash
 /plugin install codex@openai-codex
 ```
+
+> The marketplace id (`openai-codex`) and plugin name (`codex`) are kept unchanged from upstream,
+> so the command prefix stays `/codex:*`. This means you cannot have the official `codex` plugin
+> installed at the same time — this fork replaces it.
 
 Reload plugins:
 
