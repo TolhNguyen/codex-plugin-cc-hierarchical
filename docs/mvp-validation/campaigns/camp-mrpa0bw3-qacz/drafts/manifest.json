@@ -1,0 +1,88 @@
+{
+  "campaignId": "camp-mrpa0bw3-qacz",
+  "decomposedAt": "2026-07-17T19:18:12.840Z",
+  "outDir": ".ai-company/campaigns/camp-mrpa0bw3-qacz/drafts",
+  "summary": {
+    "total": 5,
+    "runReady": 1,
+    "needsAttention": 0,
+    "expensiveTier": 4
+  },
+  "tasks": [
+    {
+      "taskId": "task-add-unit-tests-for-filesystem-helpers",
+      "title": "Add unit tests for filesystem helpers",
+      "tier": "worker",
+      "tierRationale": "This is a single-file, mechanical test addition with explicit exports, reference conventions, and a fast scoped verification command.",
+      "bucket": "run-ready",
+      "file": ".ai-company\\campaigns\\camp-mrpa0bw3-qacz\\drafts\\task-add-unit-tests-for-filesystem-helpers.json",
+      "lint": {
+        "ok": true,
+        "errorCodes": [],
+        "warningCodes": []
+      },
+      "skillGap": [],
+      "requiredSkills": []
+    },
+    {
+      "taskId": "task-define-the-provider-agnostic-streaming-c",
+      "title": "Define the provider-agnostic streaming contract",
+      "tier": "executive",
+      "tierRationale": "This is a cross-runtime architecture decision that defines semantics consumed by every provider and caller; an executive tier must settle compatibility and lifecycle behavior before implementation.",
+      "bucket": "expensive-tier",
+      "file": null,
+      "lint": {
+        "ok": true,
+        "errorCodes": [],
+        "warningCodes": []
+      },
+      "skillGap": [],
+      "requiredSkills": []
+    },
+    {
+      "taskId": "task-refactor-provider-runtimes-to-the-shared",
+      "title": "Refactor provider runtimes to the shared streaming contract",
+      "tier": "manager",
+      "tierRationale": "Although the files are localized, this slice requires coordinating two transport implementations, preserving divergent provider behavior, and updating behavioral tests against an architectural contract.",
+      "bucket": "expensive-tier",
+      "file": null,
+      "lint": {
+        "ok": true,
+        "errorCodes": [],
+        "warningCodes": []
+      },
+      "skillGap": [],
+      "requiredSkills": []
+    },
+    {
+      "taskId": "task-migrate-orchestration-callers-to-the-sha",
+      "title": "Migrate orchestration callers to the shared runtime interface",
+      "tier": "manager",
+      "tierRationale": "This is repo-wide coordination across routing, review, decomposition, escalation, and topology flows; correctness depends on preserving interactions among multiple callers and runtime providers.",
+      "bucket": "expensive-tier",
+      "file": null,
+      "lint": {
+        "ok": true,
+        "errorCodes": [],
+        "warningCodes": []
+      },
+      "skillGap": [],
+      "requiredSkills": []
+    },
+    {
+      "taskId": "task-verify-the-complete-runtime-migration",
+      "title": "Verify the complete runtime migration",
+      "tier": "manager",
+      "tierRationale": "Full-suite verification and regression resolution require repository-wide judgment and cannot be reduced to a cheap isolated worker check.",
+      "bucket": "expensive-tier",
+      "file": null,
+      "lint": {
+        "ok": true,
+        "errorCodes": [],
+        "warningCodes": []
+      },
+      "skillGap": [],
+      "requiredSkills": []
+    }
+  ]
+}

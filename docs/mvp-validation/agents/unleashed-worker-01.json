@@ -1,0 +1,38 @@
+{
+  "id": "unleashed-worker-01",
+  "name": "Unleashed DeepSeek Worker",
+  "type": "temporary",
+  "status": "active",
+  "ownership": {
+    "primary": [
+      "tests/**"
+    ],
+    "secondary": [],
+    "excluded": []
+  },
+  "responsibilities": [
+    "write unit tests for lib modules",
+    "keep the verification command green"
+  ],
+  "skills": [],
+  "memory": {
+    "namespaces": []
+  },
+  "permissions": {
+    "read": [
+      "**"
+    ],
+    "write": [
+      "tests/**"
+    ]
+  },
+  "runtime": {
+    "provider": "deepseek",
+    "model": "deepseek-chat"
+  },
+  "limits": {
+    "maxAttemptsPerTask": 3,
+    "maxExecutionMinutes": 45,
+    "maxToolCalls": 300
+  }
+}

@@ -1,0 +1,8 @@
+{"at":"2026-07-17T18:33:19.157Z","event":"campaign_created","campaignId":"camp-mrpa0bw3-qacz"}
+{"at":"2026-07-17T18:34:13.479Z","event":"campaign_status","from":"draft","to":"awaiting_approval","approvedBy":null}
+{"at":"2026-07-17T18:34:13.481Z","event":"campaign_status","from":"awaiting_approval","to":"running","approvedBy":"Executive"}
+{"at":"2026-07-17T18:34:23.500Z","event":"task_attempt_started","taskId":"task-prompts-01","attempt":1,"agentId":"unleashed-worker-01"}
+{"at":"2026-07-17T18:34:34.683Z","event":"worker_result","taskId":"task-prompts-01","attempt":1,"executionId":"exec-mrpa1pjj-e6thkh","status":"completed"}
+{"at":"2026-07-17T18:34:51.563Z","event":"review_decision","taskId":"task-prompts-01","attempt":1,"decision":"approve"}
+{"at":"2026-07-17T18:34:51.570Z","event":"loop_finished","taskId":"task-prompts-01","outcome":"approved","attempts":1}
+{"at":"2026-07-17T19:18:12.840Z","event":"plan_decomposed","total":5,"runReady":1,"needsAttention":0,"expensiveTier":4}

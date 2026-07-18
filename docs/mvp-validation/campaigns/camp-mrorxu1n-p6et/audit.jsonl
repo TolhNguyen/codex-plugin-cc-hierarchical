@@ -1,0 +1,12 @@
+{"at":"2026-07-17T10:07:29.629Z","event":"campaign_created","campaignId":"camp-mrorxu1n-p6et"}
+{"at":"2026-07-17T10:07:48.332Z","event":"campaign_status","from":"draft","to":"awaiting_approval","approvedBy":null}
+{"at":"2026-07-17T10:07:48.334Z","event":"campaign_status","from":"awaiting_approval","to":"running","approvedBy":"user-unleashed-experiment"}
+{"at":"2026-07-17T10:07:56.457Z","event":"task_lint_warnings","taskId":"task-unleashed-01","warnings":[{"severity":"warning","code":"NO_CONTEXT_FILES","message":"Task ships no contextFiles; the worker must burn tool calls exploring the repo.","recommendation":"Pre-stuff the reference files the worker needs into contextFiles (they are injected free of tool calls)."}]}
+{"at":"2026-07-17T10:07:56.458Z","event":"task_attempt_started","taskId":"task-unleashed-01","attempt":1,"agentId":"unleashed-worker-01"}
+{"at":"2026-07-17T10:08:37.404Z","event":"worker_result","taskId":"task-unleashed-01","attempt":1,"executionId":"exec-mroryer0-kysic9","status":"completed"}
+{"at":"2026-07-17T10:08:49.295Z","event":"review_decision","taskId":"task-unleashed-01","attempt":1,"decision":"approve"}
+{"at":"2026-07-17T10:08:49.297Z","event":"loop_finished","taskId":"task-unleashed-01","outcome":"approved","attempts":1}
+{"at":"2026-07-17T18:32:53.523Z","event":"loop_halted","taskId":"task-prompts-01","attempt":1,"reason":"Budget exhausted: campaign duration (505m/360m)"}
+{"at":"2026-07-17T18:32:53.546Z","event":"loop_finished","taskId":"task-prompts-01","outcome":"halted","attempts":0}
+{"at":"2026-07-17T18:32:53.548Z","event":"campaign_status","from":"running","to":"paused","approvedBy":null}
+{"at":"2026-07-17T18:32:53.548Z","event":"campaign_paused_budget","taskId":"task-prompts-01","reason":"Budget exhausted: campaign duration (505m/360m)"}

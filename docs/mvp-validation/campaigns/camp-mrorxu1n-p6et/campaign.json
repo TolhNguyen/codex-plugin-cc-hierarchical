@@ -1,0 +1,55 @@
+{
+  "campaignId": "camp-mrorxu1n-p6et",
+  "brief": "Unleashed DeepSeek experiment: cheap worker writes unit tests for lib/args.mjs with high limits",
+  "acceptanceCriteria": [
+    "node --test tests/args.test.mjs passes"
+  ],
+  "status": "paused",
+  "budget": {
+    "maxExecutiveCalls": 5,
+    "maxManagerCalls": 60,
+    "maxWorkerCalls": 150,
+    "maxAttemptsPerTask": 3,
+    "maxCampaignDurationMinutes": 360
+  },
+  "usage": {
+    "executiveCalls": 0,
+    "managerCalls": 1,
+    "workerCalls": 1,
+    "reworks": 0,
+    "estimatedCostByProvider": {
+      "deepseek": 0.02416723,
+      "codex": 0
+    },
+    "taskStats": {
+      "task-unleashed-01": {
+        "outcome": "approved",
+        "attempts": 1,
+        "workerCalls": 1,
+        "managerCalls": 1,
+        "executiveCalls": 0,
+        "reworks": 0,
+        "estimatedCostByProvider": {
+          "deepseek": 0.02416723
+        }
+      },
+      "task-prompts-01": {
+        "outcome": "halted",
+        "attempts": 0,
+        "workerCalls": 0,
+        "managerCalls": 0,
+        "executiveCalls": 0,
+        "reworks": 0,
+        "estimatedCostByProvider": {}
+      }
+    }
+  },
+  "startedAt": "2026-07-17T10:07:29.627Z",
+  "approvals": [
+    {
+      "role": "user-unleashed-experiment",
+      "decision": "approve",
+      "at": "2026-07-17T10:07:48.333Z"
+    }
+  ]
+}

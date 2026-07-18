@@ -1,0 +1,36 @@
+{
+  "taskId": "task-unleashed-01",
+  "campaignId": "camp-mrorxu1n-p6et",
+  "title": "Unit tests for lib/args.mjs",
+  "goal": "Create tests/args.test.mjs containing thorough node:test unit tests for parseArgs, normalizeArgv and splitRawArgumentString exported from plugins/codex/scripts/lib/args.mjs. Mirror the style of the existing test files in tests/ (import test from \"node:test\", import assert from \"node:assert/strict\", relative ESM imports). Cover at minimum: value options (--key value and --key=value), boolean options (--flag and --flag=false), alias mapping, short flags (-k value), positionals, `--` passthrough, the missing-value error, normalizeArgv single-token splitting, and splitRawArgumentString quoting/escaping behavior.",
+  "affectedPaths": [
+    "tests/args.test.mjs"
+  ],
+  "requiredSkills": [],
+  "owner": "unleashed-worker-01",
+  "verificationCommands": [
+    "node --test tests/args.test.mjs"
+  ],
+  "acceptanceCriteria": [
+    "tests/args.test.mjs exists and only tests plugins/codex/scripts/lib/args.mjs",
+    "node --test tests/args.test.mjs passes with every test green",
+    "coverage includes value/boolean/short options, aliases, positionals, -- passthrough, missing-value error, and splitRawArgumentString quoting"
+  ],
+  "maxAttempts": 3,
+  "status": "approved",
+  "contextFiles": [],
+  "attempts": [
+    {
+      "attempt": 1,
+      "executionId": "exec-mroryer0-kysic9",
+      "workerStatus": "completed",
+      "decision": {
+        "taskId": "task-unleashed-01",
+        "decision": "approve",
+        "feedback": [],
+        "nextAttempt": 1,
+        "maxAttempts": 3
+      }
+    }
+  ]
+}

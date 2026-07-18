@@ -1,0 +1,40 @@
+{
+  "taskId": "task-prompts-01",
+  "campaignId": "camp-mrpa0bw3-qacz",
+  "title": "Unit tests for lib/prompts.mjs",
+  "goal": "Create tests/prompts.test.mjs containing node:test unit tests for interpolateTemplate and loadPromptTemplate exported from plugins/codex/scripts/lib/prompts.mjs. Mirror the exact style of tests/args.test.mjs: `import test from \"node:test\"`, `import assert from \"node:assert/strict\"`, relative ESM import of the module under test. For interpolateTemplate cover: single {{TOKEN}} substitution, multiple different tokens in one template, the same token repeated, an unknown token replaced with the empty string, a template with no tokens returned unchanged, and that only [A-Z_] uppercase/underscore keys are treated as tokens (e.g. {{lower}} or {{Mixed1}} are left literal). For loadPromptTemplate: create a temporary directory with os.tmpdir()+fs.mkdtempSync, write a prompts/<name>.md file inside it, and assert loadPromptTemplate(tmpRoot, name) returns that file's contents; clean up the temp dir afterward. Do not modify plugins/codex/scripts/lib/prompts.mjs — only add the test file.",
+  "affectedPaths": [
+    "tests/prompts.test.mjs"
+  ],
+  "requiredSkills": [],
+  "owner": "unleashed-worker-01",
+  "verificationCommands": [
+    "node --test tests/prompts.test.mjs"
+  ],
+  "acceptanceCriteria": [
+    "tests/prompts.test.mjs exists and only tests plugins/codex/scripts/lib/prompts.mjs",
+    "node --test tests/prompts.test.mjs passes with every test green",
+    "interpolateTemplate coverage includes: single token, multiple tokens, repeated token, unknown-token-to-empty-string, no-token passthrough, and non-uppercase keys left literal",
+    "loadPromptTemplate is tested against a real temp file under a prompts/ subdirectory and the temp dir is cleaned up"
+  ],
+  "maxAttempts": 3,
+  "status": "approved",
+  "contextFiles": [
+    "plugins/codex/scripts/lib/prompts.mjs",
+    "tests/args.test.mjs"
+  ],
+  "attempts": [
+    {
+      "attempt": 1,
+      "executionId": "exec-mrpa1pjj-e6thkh",
+      "workerStatus": "completed",
+      "decision": {
+        "taskId": "task-prompts-01",
+        "decision": "approve",
+        "feedback": [],
+        "nextAttempt": 1,
+        "maxAttempts": 3
+      }
+    }
+  ]
+}

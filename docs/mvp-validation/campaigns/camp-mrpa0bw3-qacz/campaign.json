@@ -1,0 +1,46 @@
+{
+  "campaignId": "camp-mrpa0bw3-qacz",
+  "brief": "Demonstrate the DeepSeek worker execution path end-to-end: a cheap worker writes node:test unit tests for lib/prompts.mjs, Codex manager reviews.",
+  "acceptanceCriteria": [
+    "tests/prompts.test.mjs exists and passes via node --test tests/prompts.test.mjs"
+  ],
+  "status": "running",
+  "budget": {
+    "maxExecutiveCalls": 5,
+    "maxManagerCalls": 10,
+    "maxWorkerCalls": 20,
+    "maxAttemptsPerTask": 3,
+    "maxCampaignDurationMinutes": 60
+  },
+  "usage": {
+    "executiveCalls": 0,
+    "managerCalls": 2,
+    "workerCalls": 1,
+    "reworks": 0,
+    "estimatedCostByProvider": {
+      "deepseek": 0.009064810000000001,
+      "codex": 0
+    },
+    "taskStats": {
+      "task-prompts-01": {
+        "outcome": "approved",
+        "attempts": 1,
+        "workerCalls": 1,
+        "managerCalls": 1,
+        "executiveCalls": 0,
+        "reworks": 0,
+        "estimatedCostByProvider": {
+          "deepseek": 0.009064810000000001
+        }
+      }
+    }
+  },
+  "startedAt": "2026-07-17T18:33:19.155Z",
+  "approvals": [
+    {
+      "role": "Executive",
+      "decision": "approve",
+      "at": "2026-07-17T18:34:13.480Z"
+    }
+  ]
+}

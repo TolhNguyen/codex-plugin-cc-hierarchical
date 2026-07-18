@@ -1,0 +1,27 @@
+{
+  "taskId": "task-add-unit-tests-for-filesystem-helpers",
+  "campaignId": "camp-mrpa0bw3-qacz",
+  "title": "Add unit tests for filesystem helpers",
+  "goal": "Create tests/fs.test.mjs using node:test and the conventions from tests/args.test.mjs. Import readJsonFile, writeJsonFile, and ensureAbsolutePath from plugins/codex/scripts/lib/fs.mjs. Cover JSON write/read round trips and relative versus absolute path resolution, using isolated temporary paths and cleaning them up.",
+  "affectedPaths": [
+    "tests/fs.test.mjs"
+  ],
+  "requiredSkills": [],
+  "owner": "",
+  "verificationCommands": [
+    "node --test tests/fs.test.mjs"
+  ],
+  "acceptanceCriteria": [
+    "tests/fs.test.mjs exists and uses node:test conventions consistent with tests/args.test.mjs.",
+    "The tests verify writeJsonFile followed by readJsonFile preserves JSON data.",
+    "The tests verify ensureAbsolutePath returns an absolute path for both relative and already-absolute inputs.",
+    "node --test tests/fs.test.mjs passes."
+  ],
+  "maxAttempts": 3,
+  "status": "pending",
+  "contextFiles": [
+    "tests/args.test.mjs",
+    "plugins/codex/scripts/lib/fs.mjs",
+    "tests/helpers.mjs"
+  ]
+}
